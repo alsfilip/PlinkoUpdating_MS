@@ -1,0 +1,119 @@
+# PlinkoUpdating manuscript
+
+This file contains the analysis for the PlinkoUpdating Manuscript. This manuscript will contain data from the bar conditions in the PlinkoNorm conditions and PlinkoUpdating conditions.
+
+## PlinkoNorm bar condition
+
+Load data for both PlinkoNorm conditions
+```{r}
+library(plyr)
+#Load data from break condition (d1) - 10 participants
+datpth1 = "School/Plinko/PlinkoNorm/pn1/"
+fs = dir(path = datpth1,pattern = "barData")
+d1 <- read.csv(paste0(datpth1,fs[1]))
+for (f in fs[2:length(fs)]) {
+dprime1 <- read.csv(paste0(datpth1, f))
+d1 <- rbind(d1,dprime1)
+rm(dprime1)
+}
+
+#Load data from continuous condition (d2) - 16 participants
+
+#The participant names aren't consistent in the raw data files. the function below makes corrections.
+rp <- function(pNum){
+  if(substr(pNum[1],1,1)=="P"){
+    r_pNum <- c()
+    for(i in pNum){
+      num <- as.numeric(substr(i,2,3))
+      r_pNum <- append(r_pNum, num)
+    }
+    return(r_pNum)
+  }
+  else{return(pNum)}
+}
+
+datpth2 = "School/Plinko/PlinkoNorm/pn2/"
+fs2 = dir(path = datpth2,pattern = "barData")
+d2 <- read.csv(paste0(datpth2,fs2[1]))
+d2[,1] <- rp(d2[,1])
+d2[,1] <- factor(d2[,1])
+for (f in fs2[2:length(fs2)]) {
+dprime2 <- read.csv(paste0(datpth2, f))
+dprime2[,1] <- rp(dprime2[,1])
+dprime2[,1] <- factor(dprime2[,1])
+d2 <- rbind(d2,dprime2)
+rm(dprime2)
+}
+```
+Get accuracy scores for each condition
+```{r}
+library(plyr)
+#Get accuracy scores for each condition
+
+#Ball sequence for each participant
+bD <- ddply(d1,.(Trial, Distribution.Number), summarize, BallPos = mean(as.numeric(Ball.Position)))
+
+#Computer density functions for actual ball drops
+bD_dense <- function(bD){
+  den <- c()
+  for(i in 1:40){
+    den <- append(den,(sum(bD==i)/length(bD)))
+  }
+  return(den)
+}
+
+#Density of discrete distributions
+wG_d <- bD_dense(bD[1:100,3])
+nG_d <- bD_dense(bD[101:200,3])
+bM_d <- bD_dense(bD[201:300,3])
+sK_d <- bD_dense(bD[301:400,3])
+
+#Density for generative distributions
+wG_g <- dnorm(1:40, mean=18, sd = 6)
+nG_g <- dnorm(1:40, mean = 31, sd = 2)
+bM_g <- (dnorm(1:40, mean=10, sd = 3)+dnorm(1:40,mean=28,sd = 3))/2
+sK_g <- dweibull(0:39,scale=6, shape = 1)
+
+#Function to calculate accuracy based on the discrete distribution of ball drops and generative distributions
+accG <- function(pdist,dNum){
+  if(mean(dNum) == 1){
+    return(list(pmin(pdist,wG_d),pmin(pdist,wG_g)))
+  }
+  else if(mean(dNum) == 2){
+    return(list(pmin(pdist,nG_d),pmin(pdist,nG_g)))
+  }
+  else if(mean(dNum) == 3){
+    return(list(pmin(pdist,bM_d),pmin(pdist,bM_g)))
+  }
+  else if(mean(dNum) == 4){
+    return(list(pmin(pdist,sK_d),pmin(pdist,sK_g)))
+  }
+}
+
+d1.acc <- ddply(d1,.(Participant, Trial), summarize, Acc_d = sum(accG(Participant.Slot.Estimate,Distribution.Number)[[1]]), Acc_g = sum(accG(Participant.Slot.Estimate,Distribution.Number)[[2]]))
+
+d2.acc <- ddply(d2,.(Participant, Trial), summarize, Acc_d = sum(accG(Participant.Slot.Estimate,Distribution.Number)[[1]]), Acc_g = sum(accG(Participant.Slot.Estimate,Distribution.Number)[[2]]))
+
+s <- 1
+nP1 <- c()
+nP2 <- c()
+d1.acc$Cond <- rep("pn1",length(d1.acc[,1]))
+for(i in unique(d1.acc$Participant)){
+  nP1 <- append(nP1,rep(s,length(d1.acc$Participant[d1.acc$Participant == i])))
+  s <- s+1
+}
+for(x in unique(d2.acc$Participant)){
+  nP2 <- append(nP2,rep(s,length(d2.acc$Participant[d2.acc$Participant == x])))
+  s <- s+1
+}
+d1.acc$NP <- factor(nP1)
+d2.acc$NP <- factor(nP2)
+d2.acc$Cond <- rep("pn2",length(d2.acc[,1]))
+#Single data frame with performance from both conditions
+d12.acc <- rbind(d1.acc,d2.acc)
+d12.acc$DistType <- rep(NA,length(d12.acc[,1]))
+d12.acc$DistType[d12.acc$Trial < 101] <- "wG"
+d12.acc$DistType[d12.acc$Trial> 100 & d12.acc$Trial < 201] <- "nG"
+d12.acc$DistType[d12.acc$Trial> 200 & d12.acc$Trial < 301] <- "bM"
+d12.acc$DistType[d12.acc$Trial> 300] <- "sK"
+```
