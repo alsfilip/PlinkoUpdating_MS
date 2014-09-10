@@ -117,3 +117,32 @@ d12.acc$DistType[d12.acc$Trial> 100 & d12.acc$Trial < 201] <- "nG"
 d12.acc$DistType[d12.acc$Trial> 200 & d12.acc$Trial < 301] <- "bM"
 d12.acc$DistType[d12.acc$Trial> 300] <- "sK"
 ```
+Accuracy comparisons betweenb distribution types in plinko norm 1
+```{r}
+library(ggplot2)
+pn1 <- subset(d12.acc,Cond == "pn1")
+pn1.acc <- ddply(pn1,.(NP,Cond, DistType), summarize, MAcc_d=mean(Acc_d), MAcc_g=mean(Acc_g),EndAcc_d=tail(Acc_d,n=1),EndAcc_g=tail(Acc_g,n=1))
+
+pn1.acc$DistType <- factor(pn1.acc$DistType)
+pn1.macc.aov <- aov(MAcc_d~DistType+Error(NP/DistType),data = pn1.acc)
+summary(pn1.macc.aov)
+
+pn1.acc$DistType <- factor(pn1.acc$DistType)
+pn1.eacc.aov <- aov(EndAcc_d~DistType+Error(NP/DistType),data = pn1.acc)
+summary(pn1.eacc.aov)
+
+pn1.pltsum <- ddply(pn1.acc,.(DistType), summarize, MA_d = mean(MAcc_d),MA_dSP = mean_se(MAcc_d)[[3]], MA_dSM=mean_se(MAcc_d)[[2]],MA_g = mean(MAcc_g),MA_gSP = mean_se(MAcc_g)[[3]], MA_gSM=mean_se(MAcc_g)[[2]],M_EAd = mean(EndAcc_d),M_EAd_SP = mean_se(EndAcc_d)[[3]], M_EAd_SM = mean_se(EndAcc_d)[[2]],M_EAg = mean(EndAcc_g),M_EAg_SP = mean_se(EndAcc_g)[[3]], M_EAg_SM = mean_se(EndAcc_g)[[2]])
+
+pn1.acc.plt1 <- ggplot(pn1.pltsum, aes(y=MA_d,x = DistType, group = DistType,fill = DistType))+
+  geom_bar(stat="identity")+
+  geom_errorbar(data = pn1.pltsum,aes(ymin=MA_dSM,ymax=MA_dSP), colour = "black", width = .1,position = position_dodge(.9))+
+  scale_y_continuous(breaks = c(0.0,0.5,1.0),limits = c(0.0,1.0))
+pn1.acc.plt1
+
+pn1.acc.plt2 <- ggplot(pn1.pltsum, aes(y=M_EAd,x = DistType, group = DistType,fill = DistType))+
+  geom_bar(stat="identity")+
+  geom_errorbar(data = pn1.pltsum,aes(ymin=M_EAd_SM,ymax=M_EAd_SP), colour = "black", width = .1,position = position_dodge(.9))+
+  scale_y_continuous(breaks = c(0.0,0.5,1.0),limits = c(0.0,1.0))
+pn1.acc.plt2
+
+```
