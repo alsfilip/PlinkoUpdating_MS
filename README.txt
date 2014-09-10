@@ -1,0 +1,1 @@
+Plinko Updating ManuscriptSeptember 10th, 2014 - Alex FilipowiczThis repository is meant to contain versions of the Plinko Updating Manuscript along with the analysis files being used for the main text
